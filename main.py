@@ -1,12 +1,36 @@
 import requests
+import re
+import os
+
 from PySide2.QtWidgets import *
+from PySide2.QtCore import *
 from PySide2.QtGui import *
 
 from os.path import expanduser
 from window_ui import TreeUi
 from settings_ui import Ui_Settings
+from url_ui import Ui_Url
 from threading import Thread
 from bs4 import BeautifulSoup
+
+
+class App(QMainWindow):
+	def __init__(self, parent=None):
+		super(App, self).__init__(parent)
+		self.ui = Ui_Url()
+		self.ui.setupUi(self)
+		self.init_ui()
+
+	def init_ui(self):
+		self.ui.ok_btn.clicked.connect(self.parse)
+
+	def parse(self):
+		url = self.ui.url_input.text()
+		parser = Parser(url)
+		tree = parser.tree
+		self.window = Window(tree)
+		self.window.show()
+		self.hide()
 
 
 class Settings(QMainWindow):
@@ -15,10 +39,34 @@ class Settings(QMainWindow):
 		self.ui = Ui_Settings()
 		self.ui.setupUi(self)
 		self.save_path = None
+		self.auth = ("", "")
+		self.settings = QSettings("DOWNLOADER", "cra9had", self)
+		self.load_settings()
 		self.init_ui()
 
 	def init_ui(self):
 		self.ui.change_btn.clicked.connect(self.change_path)
+		self.ui.login_input.textChanged.connect(self.change_auth)
+		self.ui.pw_input.textChanged.connect(self.change_auth)
+
+	def change_auth(self):
+		username = self.ui.login_input.text()
+		password = self.ui.pw_input.text()
+		self.auth = (username, password)
+		self.save_settings()
+
+	def load_settings(self):
+		if self.settings.contains("save_path"):
+			self.save_path = self.settings.value("save_path", type=str)
+			self.ui.path_lable.setText(self.save_path)
+		if self.settings.contains("auth"):
+			self.auth = self.settings.value("auth")
+			self.ui.login_input.setText(self.auth[0])
+			self.ui.pw_input.setText(self.auth[1])
+
+	def save_settings(self):
+		self.settings.setValue("save_path", self.save_path)
+		self.settings.setValue("auth", self.auth)
 
 	def change_path(self):
 		self.save_path = QFileDialog.getExistingDirectory(
@@ -28,6 +76,7 @@ class Settings(QMainWindow):
 			QFileDialog.ShowDirsOnly
 		)
 		self.ui.path_lable.setText(self.save_path)
+		self.save_settings()
 
 
 class Window(QMainWindow):
@@ -38,8 +87,6 @@ class Window(QMainWindow):
 		self.tree = tree
 		self.toggles = {}
 		self.settings = Settings(self)
-		self.username = "sahaja"
-		self.password = "Jai Shri Mataji"
 		self.icons = {
 			".css": QIcon(r"images/document-css.png"),
 			".html": QIcon(r"images/document-html.png"),
@@ -63,7 +110,7 @@ class Window(QMainWindow):
 				toggle.setText(0, element)
 				icon = QIcon("images/folder-horizontal.png")
 				for key, icn in self.icons.items():
-					if key in element:
+					if key in element and element in self.tree:
 						icon = icn
 						break
 				toggle.setIcon(0, icon)
@@ -77,9 +124,26 @@ class Window(QMainWindow):
 				last_slice = i + 1  # i + "/
 
 	def silent_download(self, file_name):
-		content = get_file_content(self.tree[file_name][1], (self.username, self.password))
+		content = get_file_content(self.tree[file_name][1], self.settings.auth)
+		if not content:
+			return
 		with open(self.settings.save_path + "/" + file_name, "wb") as f:
 			f.write(content)
+
+	def dirs_silent_download(self, file_name):
+		for fn, info in self.tree.items():
+				path = info[0]
+				if file_name in path:
+					path = file_name + path.partition(file_name)[-1]
+					if not os.path.exists(self.settings.save_path + "/" + path):
+						os.makedirs(self.settings.save_path + "/" + path)
+					content = get_file_content(self.tree[fn][1], self.settings.auth)
+					if content == "pass":
+						continue
+					if not content:
+						return
+					with open(self.settings.save_path + "/" + path + "/" + fn, "wb") as f:
+						f.write(content)
 
 	def download_file(self):
 		item = self.ui.treeWidget.currentItem()
@@ -89,6 +153,8 @@ class Window(QMainWindow):
 			return
 		if file_name in self.tree:
 			Thread(target=self.silent_download, args=(file_name,)).start()
+		else:
+			Thread(target=self.dirs_silent_download, args=(file_name,)).start()
 
 	def init_ui(self):
 		self.ui.setting_btn.clicked.connect(lambda: self.settings.show())
@@ -155,5 +221,14 @@ class Parser:
 
 
 def get_file_content(url, auth):
-	content = requests.get(url, auth=auth).content
-	return content
+	response = requests.get(url, auth=auth)
+	if response.status_code == 200:
+		return response.content
+	elif response.status_code == 401:
+		print(auth)
+		print("incorrect username or password")
+	elif response.status_code == 404:
+		print(url, "Not Found", sep="\n")
+		return "pass"
+	else:
+		raise ParsingError(str(response.status_code))

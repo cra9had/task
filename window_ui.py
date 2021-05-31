@@ -38,6 +38,6 @@ class TreeUi(object):
         QMetaObject.connectSlotsByName(Tree)
 
     def retranslateUi(self, Tree):
-        Tree.setWindowTitle(QCoreApplication.translate("Tree", u"MainWindow", None))
+        Tree.setWindowTitle(QCoreApplication.translate("Tree", u"DOWNLOADER", None))
         self.download_btn.setText(QCoreApplication.translate("Tree", u"Download", None))
         self.setting_btn.setText(QCoreApplication.translate("Tree", u"Settings", None))
