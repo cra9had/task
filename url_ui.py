@@ -8,6 +8,7 @@ class Ui_Url(object):
         if not Url.objectName():
             Url.setObjectName(u"Url")
         Url.resize(446, 171)
+        Url.setWindowIcon(QIcon('images/icon.ico'))   
         self.centralwidget = QWidget(Url)
         self.centralwidget.setObjectName(u"centralwidget")
         self.url_input = QLineEdit(self.centralwidget)

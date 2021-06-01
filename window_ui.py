@@ -8,6 +8,7 @@ class TreeUi(object):
         if not Tree.objectName():
             Tree.setObjectName(u"Tree")
         Tree.resize(728, 558)
+        Tree.setWindowIcon(QIcon('images/icon.ico'))   
         self.centralwidget = QWidget(Tree)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)

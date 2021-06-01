@@ -1,4 +1,5 @@
 import requests
+import ctypes
 import re
 import os
 
@@ -149,7 +150,7 @@ class Window(QMainWindow):
 		item = self.ui.treeWidget.currentItem()
 		file_name = item.text(0)
 		if not self.settings.save_path:
-			print("choose save_path")
+			show_error("choose save_path")
 			return
 		if file_name in self.tree:
 			Thread(target=self.silent_download, args=(file_name,)).start()
@@ -174,6 +175,7 @@ class Parser:
 		self.url = url
 		self.host = self.get_host()
 		self.session = requests.session()
+		print("start parser")
 		self.tree = self.parse(self.get_html())
 
 	def get_host(self):
@@ -199,25 +201,20 @@ class Parser:
 		page_tree = soup.find("ol", class_='tree')
 		files = page_tree.find_all("li", class_="file")
 		if not files:
-			raise ParsingError("No files found")
+			raise show_error("No files found")
 		for file in files:
 			info = file.find("a", href=True)
 			path = self.remake_path(info["href"])
 			href = self.host + info["href"]
 			tree.update({info.getText(): [path, href]})
-			# if not os.path.exists(path):
-			#     os.makedirs(path)
-			# with open(path + "/" + info.getText(), "wb") as f:
-			#     f.write(download_file(href, self.auth))
 		return tree
 
 	def get_html(self):
 		response = self.session.get(self.url)
 		if response.status_code == 200:
-			print(200)
 			return response.text
 		else:
-			raise ParsingError(f"get {response.status_code} error during parser")
+			raise show_error(f"get {response.status_code} error during parser")
 
 
 def get_file_content(url, auth):
@@ -225,10 +222,25 @@ def get_file_content(url, auth):
 	if response.status_code == 200:
 		return response.content
 	elif response.status_code == 401:
-		print(auth)
-		print("incorrect username or password")
+		show_error("incorrect username or password")
 	elif response.status_code == 404:
-		print(url, "Not Found", sep="\n")
+		show_error(url, "\nNot Found")
 		return "pass"
 	else:
-		raise ParsingError(str(response.status_code))
+		show_error(str(response.status_code))
+
+
+def show_error(text, exit_=False):
+	ctypes.windll.user32.MessageBoxW(0, text, "Error",0)
+
+
+def start():
+	app = QApplication([])
+	window = App()
+	window.show()
+	app.exec_()
+
+
+
+if __name__ == '__main__':
+	start()
