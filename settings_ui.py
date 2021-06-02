@@ -5,6 +5,7 @@ class Ui_Settings(object):
     def setupUi(self, Settings):
         Settings.setObjectName("Settings")
         Settings.resize(422, 231)
+        Settings.setWindowIcon(QtGui.QIcon('images/icon.ico')) 
         self.centralwidget = QtWidgets.QWidget(Settings)
         self.centralwidget.setObjectName("centralwidget")
         self.label = QtWidgets.QLabel(self.centralwidget)

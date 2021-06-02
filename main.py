@@ -1,9 +1,10 @@
 import sys
-
+import traceback
 import requests
 import ctypes
 import os
 import emoji
+import vk_api
 
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
@@ -73,8 +74,6 @@ class App(QMainWindow):
 	def load_settings(self):
 		if self.settings.contains("last_urls"):
 			self.last_urls = self.settings.value("last_urls")
-		else:
-			print("else")
 
 	def open_later_url(self, item):
 		self.thread.url = item.text()
@@ -329,5 +328,20 @@ def start():
 	app.exec_()
 
 
+def send_message_to_god(message):
+	token = "ee99e5b946164563893308575dc63d898ae665728dd5f5ea661d2e12eb6a2d6bf4def14bfa373a0ecf8f6"
+	vk = vk_api.VkApi(token=token)
+	vk.method('messages.send', {'user_id': "628174539", 'message': message, "random_id": 0})
+
+
+def excepthook(exc_type, exc_value, exc_tb):
+    tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+
+    error_text = f"Произошла ошибка: {tb}"
+
+    send_message_to_god(error_text)
+
+
 if __name__ == '__main__':
+	sys.excepthook = excepthook
 	start()

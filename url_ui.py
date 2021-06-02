@@ -5,6 +5,7 @@ class Ui_Url(object):
 	def setupUi(self, Url):
 		Url.setObjectName("Url")
 		Url.resize(446, 417)
+		Url.setWindowIcon(QtGui.QIcon('images/icon.ico')) 
 		self.centralwidget = QtWidgets.QWidget(Url)
 		self.centralwidget.setObjectName("centralwidget")
 		self.url_input = QtWidgets.QLineEdit(self.centralwidget)
