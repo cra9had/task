@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>446</width>
-    <height>171</height>
+    <height>417</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -51,6 +51,16 @@
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QListWidget" name="last_urls">
+    <property name="geometry">
+     <rect>
+      <x>30</x>
+      <y>201</y>
+      <width>391</width>
+      <height>201</height>
+     </rect>
     </property>
    </widget>
   </widget>

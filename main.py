@@ -1,7 +1,9 @@
+import sys
+
 import requests
 import ctypes
-import re
 import os
+import emoji
 
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
@@ -15,23 +17,76 @@ from threading import Thread
 from bs4 import BeautifulSoup
 
 
+class Worker(QThread):
+	finished = Signal()
+	get_tree = Signal()
+	parser = None
+	url = None
+	tree = None
+
+	def __init__(self, parent):
+		super(Worker, self).__init__()
+		self.parent = parent
+
+	def run(self):
+		if not self.url:
+			url = self.parent.ui.url_input.text()
+		else:
+			url = self.url
+		self.parser = Parser(url)
+		self.tree = self.parser.tree
+		is_url_new = True
+		for i in range(self.parent.ui.last_urls.count()):
+			if url == self.parent.ui.last_urls.item(i).text():
+				is_url_new = False
+		if is_url_new:
+			self.parent.last_urls.append(url)
+			self.parent.settings.setValue("last_urls", self.parent.last_urls)
+
+		self.get_tree.emit()
+		self.finished.emit()
+
+
 class App(QMainWindow):
+	window = None
+	last_urls = []
+
 	def __init__(self, parent=None):
 		super(App, self).__init__(parent)
 		self.ui = Ui_Url()
 		self.ui.setupUi(self)
+		self.settings = QSettings("DOWNLOADER", "cra9had", self)
+		self.load_settings()
+		self.thread = Worker(self)
+		self.thread.get_tree.connect(self.get_tree)
+		self.thread.finished.connect(self.open_window)
 		self.init_ui()
 
 	def init_ui(self):
-		self.ui.ok_btn.clicked.connect(self.parse)
+		for url in self.last_urls:
+			item = QListWidgetItem()
+			item.setText(url)
+			self.ui.last_urls.addItem(item)
+		self.ui.ok_btn.clicked.connect(self.thread.start)
+		self.ui.last_urls.itemDoubleClicked.connect(self.open_later_url)
 
-	def parse(self):
-		url = self.ui.url_input.text()
-		parser = Parser(url)
-		tree = parser.tree
-		self.window = Window(tree)
+	def load_settings(self):
+		if self.settings.contains("last_urls"):
+			self.last_urls = self.settings.value("last_urls")
+		else:
+			print("else")
+
+	def open_later_url(self, item):
+		self.thread.url = item.text()
+		self.thread.start()
+
+	def open_window(self):
 		self.window.show()
 		self.hide()
+
+	def get_tree(self):
+		tree = self.thread.tree
+		self.window = Window(tree)
 
 
 class Settings(QMainWindow):
@@ -47,6 +102,7 @@ class Settings(QMainWindow):
 
 	def init_ui(self):
 		self.ui.change_btn.clicked.connect(self.change_path)
+		self.ui.path_lable.textChanged.connect(self.remake_path)
 		self.ui.login_input.textChanged.connect(self.change_auth)
 		self.ui.pw_input.textChanged.connect(self.change_auth)
 
@@ -61,13 +117,17 @@ class Settings(QMainWindow):
 			self.save_path = self.settings.value("save_path", type=str)
 			self.ui.path_lable.setText(self.save_path)
 		if self.settings.contains("auth"):
-			self.auth = self.settings.value("auth")
+			self.auth = list(self.settings.value("auth"))
+			self.auth[1] = ""
+			self.auth = tuple(self.auth)
 			self.ui.login_input.setText(self.auth[0])
-			self.ui.pw_input.setText(self.auth[1])
 
 	def save_settings(self):
 		self.settings.setValue("save_path", self.save_path)
 		self.settings.setValue("auth", self.auth)
+
+	def remake_path(self):
+		self.save_path = self.ui.path_lable.text()
 
 	def change_path(self):
 		self.save_path = QFileDialog.getExistingDirectory(
@@ -87,6 +147,7 @@ class Window(QMainWindow):
 		self.ui.setupUi(self)
 		self.tree = tree
 		self.toggles = {}
+		self.downloaded_files = {} # file_name: path to file
 		self.settings = Settings(self)
 		self.icons = {
 			".css": QIcon(r"images/document-css.png"),
@@ -101,6 +162,11 @@ class Window(QMainWindow):
 		}
 		self.init_ui()
 
+	def is_file_exist(self, name):
+		for root, dirs, files in os.walk(self.settings.save_path):
+			if name in files:
+				return os.path.join(root, name)
+
 	def get_tree_hierarchy(self, path):
 		last_slice = 0
 		parent = self.ui.treeWidget.invisibleRootItem()
@@ -108,7 +174,12 @@ class Window(QMainWindow):
 			if sel == "/":
 				element = path[last_slice:i]
 				toggle = QTreeWidgetItem()
-				toggle.setText(0, element)
+				file_path = self.is_file_exist(element)
+				if file_path:
+					toggle.setText(0, emoji.emojize(f"{element} :white_check_mark:", use_aliases=True))
+					self.downloaded_files.update({element: file_path})
+				else:
+					toggle.setText(0, element)
 				icon = QIcon("images/folder-horizontal.png")
 				for key, icn in self.icons.items():
 					if key in element and element in self.tree:
@@ -122,16 +193,20 @@ class Window(QMainWindow):
 				else:
 					parent = self.toggles[element]
 
-				last_slice = i + 1  # i + "/
+				last_slice = i + 1  # i + "/"
 
-	def silent_download(self, file_name):
+	def silent_download(self, file_name, item):
 		content = get_file_content(self.tree[file_name][1], self.settings.auth)
+		path_to_file = self.settings.save_path + "/" + file_name
 		if not content:
 			return
-		with open(self.settings.save_path + "/" + file_name, "wb") as f:
+		with open(path_to_file, "wb") as f:
 			f.write(content)
 
-	def dirs_silent_download(self, file_name):
+		item.setText(0, emoji.emojize(f"{item.text(0)} :white_check_mark:", use_aliases=True))
+		self.downloaded_files.update({file_name: path_to_file})
+
+	def dirs_silent_download(self, file_name, item):
 		for fn, info in self.tree.items():
 				path = info[0]
 				if file_name in path:
@@ -143,23 +218,35 @@ class Window(QMainWindow):
 						continue
 					if not content:
 						return
-					with open(self.settings.save_path + "/" + path + "/" + fn, "wb") as f:
+					path_to_file = self.settings.save_path + "/" + path + "/" + fn
+					with open(path_to_file, "wb") as f:
 						f.write(content)
+					item.setText(0, emoji.emojize(f"{item.text(0)} :white_check_mark:", use_aliases=True))
+					self.downloaded_files.update({fn: path_to_file})
 
 	def download_file(self):
 		item = self.ui.treeWidget.currentItem()
 		file_name = item.text(0)
 		if not self.settings.save_path:
 			show_error("choose save_path")
+			self.settings.show()
 			return
 		if file_name in self.tree:
-			Thread(target=self.silent_download, args=(file_name,)).start()
+			Thread(target=self.silent_download, args=(file_name, item,)).start()
 		else:
-			Thread(target=self.dirs_silent_download, args=(file_name,)).start()
+			Thread(target=self.dirs_silent_download, args=(file_name, item,)).start()
+
+	def open_file(self, item):
+		if item.text(0) in self.downloaded_files:
+			os.startfile(self.downloaded_files[item.text(0)])
+		else:
+			if item.text(0) in self.tree:
+				show_error("You need to download file before opening")
 
 	def init_ui(self):
 		self.ui.setting_btn.clicked.connect(lambda: self.settings.show())
 		self.ui.download_btn.clicked.connect(self.download_file)
+		self.ui.treeWidget.itemDoubleClicked.connect(self.open_file)
 
 		for file_name, info in self.tree.items():
 			path = info[0]
@@ -175,9 +262,7 @@ class Parser:
 		self.url = url
 		self.host = self.get_host()
 		self.session = requests.session()
-		print("start parser")
-		html = self.get_html()
-		self.tree = self.parse()
+		self.tree = self.parse(self.get_html())
 
 	def get_host(self):
 		counter = 0
@@ -232,7 +317,9 @@ def get_file_content(url, auth):
 
 
 def show_error(text, exit_=False):
-	ctypes.windll.user32.MessageBoxW(0, text, "Error",0)
+	ctypes.windll.user32.MessageBoxW(0, text, "Error", 0)
+	if exit_:
+		sys.exit()
 
 
 def start():
@@ -240,7 +327,6 @@ def start():
 	window = App()
 	window.show()
 	app.exec_()
-
 
 
 if __name__ == '__main__':
