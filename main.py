@@ -176,7 +176,8 @@ class Parser:
 		self.host = self.get_host()
 		self.session = requests.session()
 		print("start parser")
-		self.tree = self.parse(self.get_html())
+		html = self.get_html()
+		self.tree = self.parse()
 
 	def get_host(self):
 		counter = 0
