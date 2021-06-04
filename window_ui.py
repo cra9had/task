@@ -1,44 +1,63 @@
-from PySide2.QtCore import *
-from PySide2.QtGui import *
-from PySide2.QtWidgets import *
+from PySide2 import QtCore, QtGui, QtWidgets
 
 
 class TreeUi(object):
     def setupUi(self, Tree):
-        if not Tree.objectName():
-            Tree.setObjectName(u"Tree")
+        Tree.setObjectName("Tree")
         Tree.resize(728, 558)
-        Tree.setWindowIcon(QIcon('images/icon.ico'))   
-        self.centralwidget = QWidget(Tree)
-        self.centralwidget.setObjectName(u"centralwidget")
-        self.verticalLayout = QVBoxLayout(self.centralwidget)
-        self.verticalLayout.setObjectName(u"verticalLayout")
-        self.treeWidget = QTreeWidget(self.centralwidget)
-        __qtreewidgetitem = QTreeWidgetItem()
-        __qtreewidgetitem.setText(0, u"1")
-        self.treeWidget.setHeaderItem(__qtreewidgetitem)
-        self.treeWidget.setObjectName(u"treeWidget")
+        self.centralwidget = QtWidgets.QWidget(Tree)
+        self.centralwidget.setObjectName("centralwidget")
+        self.treeWidget = QtWidgets.QTreeWidget(self.centralwidget)
+        self.treeWidget.setGeometry(QtCore.QRect(10, 60, 701, 431))
+        self.treeWidget.setObjectName("treeWidget")
+        self.treeWidget.headerItem().setText(0, "1")
         self.treeWidget.header().setVisible(False)
-
-        self.verticalLayout.addWidget(self.treeWidget)
-
-        self.download_btn = QPushButton(self.centralwidget)
-        self.download_btn.setObjectName(u"download_btn")
-
-        self.verticalLayout.addWidget(self.download_btn)
-
-        self.setting_btn = QPushButton(self.centralwidget)
-        self.setting_btn.setObjectName(u"setting_btn")
-
-        self.verticalLayout.addWidget(self.setting_btn)
-
+        self.download_btn = QtWidgets.QPushButton(self.centralwidget)
+        self.download_btn.setGeometry(QtCore.QRect(10, 500, 701, 23))
+        font = QtGui.QFont()
+        font.setFamily("Times New Roman")
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.download_btn.setFont(font)
+        self.download_btn.setObjectName("download_btn")
+        self.setting_btn = QtWidgets.QPushButton(self.centralwidget)
+        self.setting_btn.setGeometry(QtCore.QRect(610, 0, 111, 31))
+        font = QtGui.QFont()
+        font.setFamily("Times New Roman")
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.setting_btn.setFont(font)
+        self.setting_btn.setObjectName("setting_btn")
+        self.status_label = QtWidgets.QLabel(self.centralwidget)
+        self.status_label.setGeometry(QtCore.QRect(110, 0, 501, 51))
+        font = QtGui.QFont()
+        font.setFamily("Times New Roman")
+        font.setPointSize(22)
+        font.setBold(True)
+        font.setWeight(75)
+        self.status_label.setFont(font)
+        self.status_label.setAlignment(QtCore.Qt.AlignCenter)
+        self.status_label.setObjectName("status_label")
+        self.open_file_btn = QtWidgets.QPushButton(self.centralwidget)
+        self.open_file_btn.setGeometry(QtCore.QRect(10, 530, 701, 23))
+        font = QtGui.QFont()
+        font.setFamily("Times New Roman")
+        font.setPointSize(11)
+        font.setBold(True)
+        font.setWeight(75)
+        self.open_file_btn.setFont(font)
+        self.open_file_btn.setObjectName("open_file_btn")
         Tree.setCentralWidget(self.centralwidget)
 
         self.retranslateUi(Tree)
-
-        QMetaObject.connectSlotsByName(Tree)
+        QtCore.QMetaObject.connectSlotsByName(Tree)
 
     def retranslateUi(self, Tree):
-        Tree.setWindowTitle(QCoreApplication.translate("Tree", u"DOWNLOADER", None))
-        self.download_btn.setText(QCoreApplication.translate("Tree", u"Download", None))
-        self.setting_btn.setText(QCoreApplication.translate("Tree", u"Settings", None))
+        _translate = QtCore.QCoreApplication.translate
+        Tree.setWindowTitle(_translate("Tree", "MainWindow"))
+        self.download_btn.setText(_translate("Tree", "Download"))
+        self.setting_btn.setText(_translate("Tree", "Settings"))
+        self.status_label.setText(_translate("Tree", "Status: Waiting"))
+        self.open_file_btn.setText(_translate("Tree", "Open file"))

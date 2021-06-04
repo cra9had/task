@@ -1,5 +1,6 @@
 import re
 import sys
+import time
 import traceback
 import requests
 import ctypes
@@ -49,6 +50,32 @@ class Worker(QThread):
         self.finished.emit()
 
 
+class Loader(QThread):
+    change_text = Signal(str)
+
+    def __init__(self, parent):
+        super(Loader, self).__init__()
+        self.parent = parent
+
+    def run(self):
+        original_text = self.parent.ui.loading_label.text()
+        suffix = "."
+        self.parent.ui.loading_label.show()
+        while True:
+            if self.parent.isVisible():
+                sub_string = "</h1>"
+                insert_string = suffix
+                idx = original_text.index(sub_string)
+                new_string = original_text[:idx] + insert_string + original_text[idx:]
+                self.change_text.emit(new_string)
+                suffix += "."
+            else:
+                return
+            if len(suffix) > 3:
+                suffix = "."
+            time.sleep(0.5)
+
+
 class App(QMainWindow):
     window = None
     last_urls = []
@@ -59,18 +86,27 @@ class App(QMainWindow):
         self.ui.setupUi(self)
         self.settings = QSettings("DOWNLOADER", "cra9had", self)
         self.load_settings()
+        self.loader = Loader(self)
+        self.loader.change_text.connect(self.change_text)
         self.thread = Worker(self)
         self.thread.get_tree.connect(self.get_tree)
         self.thread.finished.connect(self.open_window)
         self.init_ui()
+
+    def change_text(self, text):
+        self.ui.loading_label.setText(text)
 
     def init_ui(self):
         for url in self.last_urls:
             item = QListWidgetItem()
             item.setText(url)
             self.ui.last_urls.addItem(item)
-        self.ui.ok_btn.clicked.connect(self.thread.start)
+        self.ui.ok_btn.clicked.connect(self.start_threads)
         self.ui.last_urls.itemDoubleClicked.connect(self.open_later_url)
+
+    def start_threads(self):
+        self.loader.start()
+        self.thread.start()
 
     def load_settings(self):
         if self.settings.contains("last_urls"):
@@ -78,7 +114,7 @@ class App(QMainWindow):
 
     def open_later_url(self, item):
         self.thread.url = item.text()
-        self.thread.start()
+        self.start_threads()
 
     def open_window(self):
         self.window.show()
@@ -246,17 +282,22 @@ class Window(QMainWindow):
         else:
             Thread(target=self.dirs_silent_download, args=(file_name, item,)).start()
 
-    def open_file(self, item):
-        if item.text(0) in self.downloaded_files:
-            os.startfile(self.downloaded_files[item.text(0)])
+    def open_file(self, item=None):
+        if not item:
+            item = self.ui.treeWidget.currentItem()
+        text = deEmojify(item.text(0))
+        print(text)
+        if text in self.downloaded_files:
+            os.startfile(self.downloaded_files[text])
         else:
-            if item.text(0) in self.tree:
+            if text in self.tree:
                 show_error("You need to download file before opening")
 
     def init_ui(self):
         self.ui.setting_btn.clicked.connect(lambda: self.settings.show())
         self.ui.download_btn.clicked.connect(self.download_file)
         self.ui.treeWidget.itemDoubleClicked.connect(self.open_file)
+        self.ui.open_file_btn.clicked.connect(self.open_file)
 
         for file_name, info in self.tree.items():
             path = info[0]
