@@ -122,7 +122,7 @@ class App(QMainWindow):
 
     def get_tree(self):
         tree = self.thread.tree
-        self.window = Window(tree)
+        self.window = Window(tree, parent=self)
 
 
 class Settings(QMainWindow):
@@ -177,9 +177,10 @@ class Settings(QMainWindow):
 
 
 class Window(QMainWindow):
-    def __init__(self, tree, parent=None):
+    def __init__(self, tree, parent):
         super(Window, self).__init__(parent)
         self.ui = TreeUi()
+        self.parent = parent
         self.ui.setupUi(self)
         self.tree = tree
         self.toggles = {}
@@ -202,6 +203,12 @@ class Window(QMainWindow):
         for root, dirs, files in os.walk(self.settings.save_path):
             if name in files:
                 return os.path.join(root, name)
+
+    def zero_status(self):
+        self.set_status("Waiting")
+
+    def set_status(self, text):
+        self.ui.status_label.setText(f"Status: {text}")
 
     def get_tree_hierarchy(self, path):
         last_slice = 0
@@ -234,41 +241,53 @@ class Window(QMainWindow):
     def silent_download(self, file_name, item):
         if file_name in self.downloaded_files:
             return
+        text = deEmojify(item.text(0))
+        self.set_status(f"Downloading {text}")
+        item.setText(0, emoji.emojize(f"{text}:hourglass_flowing_sand:", use_aliases=True))
         content = get_file_content(self.tree[file_name][1], self.settings.auth)
         if content == "return":
+            self.zero_status()
             return
         path_to_file = self.settings.save_path + "/" + file_name
-        if not content:
-            item.setText(0, emoji.emojize(f"{item.text(0)}:x:", use_aliases=True))
+        if not content or content == "pass":
+            item.setText(0, emoji.emojize(f"{text}:x:", use_aliases=True))
             return
         with open(path_to_file, "wb") as f:
             f.write(content)
 
-        item.setText(0, emoji.emojize(f"{item.text(0)}:white_check_mark:", use_aliases=True))
+        item.setText(0, emoji.emojize(f"{text}:white_check_mark:", use_aliases=True))
         self.downloaded_files.update({file_name: path_to_file})
+        self.zero_status()
 
     def dirs_silent_download(self, file_name, item):
+        dir_text = deEmojify(item.text(0))
+        item.setText(0, emoji.emojize(f"{dir_text}:hourglass_flowing_sand:", use_aliases=True))
         for fn, info in self.tree.items():
             path = info[0]
             if file_name in path and file_name not in self.downloaded_files:
                 file_item = self.toggles[fn]
+                file_item_text = deEmojify(file_item.text(0))
+                file_item.setText(0, emoji.emojize(f"{file_item_text}:hourglass_flowing_sand:", use_aliases=True))
                 path = file_name + path.partition(file_name)[-1]
                 if not os.path.exists(self.settings.save_path + "/" + path):
                     os.makedirs(self.settings.save_path + "/" + path)
+                self.set_status(f"Downloading {dir_text}/{file_item_text}")
                 content = get_file_content(self.tree[fn][1], self.settings.auth)
                 if content == "return":
+                    self.zero_status()
                     return
                 elif content == "pass":
-                    file_item.setText(0, emoji.emojize(f"{file_item.text(0)}:x:", use_aliases=True))
+                    file_item.setText(0, emoji.emojize(f"{file_item_text}:x:", use_aliases=True))
                     continue
                 if not content:
                     return
                 path_to_file = self.settings.save_path + "/" + path + "/" + fn
                 with open(path_to_file, "wb") as f:
                     f.write(content)
-                file_item.setText(0, emoji.emojize(f"{file_item.text(0)}:white_check_mark:", use_aliases=True))
+                file_item.setText(0, emoji.emojize(f"{file_item_text}:white_check_mark:", use_aliases=True))
                 self.downloaded_files.update({fn: path_to_file})
-        item.setText(0, emoji.emojize(f"{item.text(0)}:white_check_mark:", use_aliases=True))
+        item.setText(0, emoji.emojize(f"{dir_text}:white_check_mark:", use_aliases=True))
+        self.zero_status()
 
     def download_file(self):
         item = self.ui.treeWidget.currentItem()
@@ -286,14 +305,20 @@ class Window(QMainWindow):
         if not item:
             item = self.ui.treeWidget.currentItem()
         text = deEmojify(item.text(0))
-        print(text)
         if text in self.downloaded_files:
             os.startfile(self.downloaded_files[text])
         else:
             if text in self.tree:
                 show_error("You need to download file before opening")
 
+    def back(self):
+        self.hide()
+        self.parent.change_text("<h1>Loading</h1>")
+        self.parent.ui.loading_label.hide()
+        self.parent.show()
+
     def init_ui(self):
+        self.ui.back_btn.clicked.connect(self.back)
         self.ui.setting_btn.clicked.connect(lambda: self.settings.show())
         self.ui.download_btn.clicked.connect(self.download_file)
         self.ui.treeWidget.itemDoubleClicked.connect(self.open_file)
@@ -356,8 +381,12 @@ class Parser:
 
 def get_file_content(url, auth):
     response = requests.get(url, auth=auth)
+
     if response.status_code == 200:
-        return response.content
+        if type(response.content) == bytes:
+            return response.content
+        else:
+            return "pass"
     elif response.status_code == 401:
         show_error("incorrect username or password")
         return "return"
@@ -367,14 +396,28 @@ def get_file_content(url, auth):
         show_error(str(response.status_code))
 
 
-def deEmojify(text):
-    regrex_pattern = re.compile(pattern="["
-                                        u"\U0001F600-\U0001F64F"  # emoticons
-                                        u"\U0001F300-\U0001F5FF"  # symbols & pictographs
-                                        u"\U0001F680-\U0001F6FF"  # transport & map symbols
-                                        u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
-                                        "]+", flags=re.UNICODE)
-    return regrex_pattern.sub(r'', text)
+def deEmojify(data):
+    emoj = re.compile("["
+                      u"\U0001F600-\U0001F64F"  # emoticons
+                      u"\U0001F300-\U0001F5FF"  # symbols & pictographs
+                      u"\U0001F680-\U0001F6FF"  # transport & map symbols
+                      u"\U0001F1E0-\U0001F1FF"  # flags (iOS)
+                      u"\U00002500-\U00002BEF"  # chinese char
+                      u"\U00002702-\U000027B0"
+                      u"\U00002702-\U000027B0"
+                      u"\U000024C2-\U0001F251"
+                      u"\U0001f926-\U0001f937"
+                      u"\U00010000-\U0010ffff"
+                      u"\u2640-\u2642"
+                      u"\u2600-\u2B55"
+                      u"\u200d"
+                      u"\u23cf"
+                      u"\u23e9"
+                      u"\u231a"
+                      u"\ufe0f"  # dingbats
+                      u"\u3030"
+                      "]+", re.UNICODE)
+    return re.sub(emoj, '', data)
 
 
 def show_error(text, exit_=False):
@@ -400,6 +443,7 @@ def excepthook(exc_type, exc_value, exc_tb):
     tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
     error_text = f"Произошла ошибка: {tb}"
     send_message_to_god(error_text)
+    # print(tb)
 
 
 if __name__ == '__main__':
