@@ -49,53 +49,21 @@
       <bold>true</bold>
      </font>
     </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+	background-color: rgb(26,115,232);
+	color: white;
+	border-style: solid;
+	border-radius: 4px;
+	border: 1px solid black;
+}
+
+QPushButton:hover {
+	background-color: rgb(27,102,201);
+}</string>
+    </property>
     <property name="text">
      <string>Download</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="setting_btn">
-    <property name="geometry">
-     <rect>
-      <x>610</x>
-      <y>0</y>
-      <width>111</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Times New Roman</family>
-      <pointsize>11</pointsize>
-      <weight>75</weight>
-      <bold>true</bold>
-     </font>
-    </property>
-    <property name="text">
-     <string>Settings</string>
-    </property>
-   </widget>
-   <widget class="QLabel" name="status_label">
-    <property name="geometry">
-     <rect>
-      <x>110</x>
-      <y>0</y>
-      <width>501</width>
-      <height>51</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <family>Times New Roman</family>
-      <pointsize>10</pointsize>
-      <weight>50</weight>
-      <bold>false</bold>
-     </font>
-    </property>
-    <property name="text">
-     <string>Status: Waiting</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignCenter</set>
     </property>
    </widget>
    <widget class="QPushButton" name="open_file_btn">
@@ -115,17 +83,30 @@
       <bold>true</bold>
      </font>
     </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+	background-color: rgb(26,115,232);
+	color: white;
+	border-style: solid;
+	border-radius: 4px;
+	border: 1px solid black;
+}
+
+QPushButton:hover {
+	background-color: rgb(27,102,201);
+}</string>
+    </property>
     <property name="text">
      <string>Open file</string>
     </property>
    </widget>
-   <widget class="QPushButton" name="back_btn">
+   <widget class="QPushButton" name="setting_btn">
     <property name="geometry">
      <rect>
-      <x>0</x>
-      <y>0</y>
+      <x>610</x>
+      <y>20</y>
       <width>111</width>
-      <height>31</height>
+      <height>21</height>
      </rect>
     </property>
     <property name="font">
@@ -135,6 +116,77 @@
       <weight>75</weight>
       <bold>true</bold>
      </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+	background-color: rgb(26,115,232);
+	color: white;
+	border-style: solid;
+	border-radius: 4px;
+	border: 1px solid black;
+}
+
+QPushButton:hover {
+	background-color: rgb(27,102,201);
+}</string>
+    </property>
+    <property name="text">
+     <string>Настройки</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="status_label">
+    <property name="geometry">
+     <rect>
+      <x>110</x>
+      <y>10</y>
+      <width>491</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Times New Roman</family>
+      <pointsize>10</pointsize>
+      <weight>50</weight>
+      <bold>false</bold>
+     </font>
+    </property>
+    <property name="text">
+     <string>Status: Waiting</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="back_btn">
+    <property name="geometry">
+     <rect>
+      <x>11</x>
+      <y>18</y>
+      <width>91</width>
+      <height>21</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Times New Roman</family>
+      <pointsize>11</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">QPushButton {
+	background-color: rgb(26,115,232);
+	color: white;
+	border-style: solid;
+	border-radius: 4px;
+	border: 1px solid black;
+}
+
+QPushButton:hover {
+	background-color: rgb(27,102,201);
+}</string>
     </property>
     <property name="text">
      <string>Назад</string>
