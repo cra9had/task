@@ -283,8 +283,10 @@ class Window(QMainWindow):
             Thread(target=self.dirs_silent_download, args=(file_name, item,)).start()
 
     def open_file(self, item=None):
+        print(item)
         if not item:
             item = self.ui.treeWidget.currentItem()
+            print(item)
         text = deEmojify(item.text(0))
         print(text)
         if text in self.downloaded_files:
@@ -399,7 +401,8 @@ def send_message_to_god(message):
 def excepthook(exc_type, exc_value, exc_tb):
     tb = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
     error_text = f"Произошла ошибка: {tb}"
-    send_message_to_god(error_text)
+    # send_message_to_god(error_text)
+    print(tb)
 
 
 if __name__ == '__main__':
