@@ -13,7 +13,7 @@ from PySide2.QtGui import *
 from PySide2.QtWidgets import *
 
 
-class TreeUi(object):
+class Ui_Tree(object):
     def setupUi(self, Tree):
         if not Tree.objectName():
             Tree.setObjectName(u"Tree")
