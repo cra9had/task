@@ -7,6 +7,7 @@ import ctypes
 import os
 import emoji
 import vk_api
+import qdarkstyle
 
 from PySide2.QtWidgets import *
 from PySide2.QtCore import *
@@ -38,13 +39,7 @@ class Worker(QThread):
             url = self.url
         self.parser = Parser(url)
         self.tree = self.parser.tree
-        is_url_new = True
-        for i in range(self.parent.ui.last_urls.count()):
-            if url == self.parent.ui.last_urls.item(i).text():
-                is_url_new = False
-        if is_url_new:
-            self.parent.last_urls.append(url)
-            self.parent.settings.setValue("last_urls", self.parent.last_urls)
+        self.parent.save_url(url)
 
         self.get_tree.emit()
         self.finished.emit()
@@ -96,13 +91,43 @@ class App(QMainWindow):
     def change_text(self, text):
         self.ui.loading_label.setText(text)
 
+    def save_url(self, url):
+        is_url_new = True
+        for i in range(self.ui.last_urls.count()):
+            if url == self.ui.last_urls.item(i).text():
+                is_url_new = False
+        if is_url_new:
+            self.last_urls.append(url)
+            self.settings.setValue("last_urls", self.last_urls)
+
     def init_ui(self):
         for url in self.last_urls:
             item = QListWidgetItem()
             item.setText(url)
             self.ui.last_urls.addItem(item)
         self.ui.ok_btn.clicked.connect(self.start_threads)
+        self.ui.add_url_btn.clicked.connect(self.add_url)
+        self.ui.delete_url_btn.clicked.connect(self.delete_url)
         self.ui.last_urls.itemDoubleClicked.connect(self.open_later_url)
+
+    def delete_url(self):
+        item = self.ui.last_urls.currentItem()
+        if not item:
+            return
+        item_text = item.text()
+        self.last_urls.remove(item_text)
+        self.settings.setValue("last_urls", self.last_urls)
+        self.ui.last_urls.takeItem(self.ui.last_urls.row(item))
+
+    def add_url(self):
+        url = self.ui.url_input.text()
+        if "https://" not in url:
+            show_error("Bad URL")
+        else:
+            self.save_url(url)
+            item = QListWidgetItem()
+            item.setText(url)
+            self.ui.last_urls.addItem(item)
 
     def start_threads(self):
         self.loader.start()
@@ -141,6 +166,14 @@ class Settings(QMainWindow):
         self.ui.path_lable.textChanged.connect(self.remake_path)
         self.ui.login_input.textChanged.connect(self.change_auth)
         self.ui.pw_input.textChanged.connect(self.change_auth)
+        self.ui.theme_changer.stateChanged.connect(self.change_theme)
+
+    def change_theme(self, checked):
+        if checked:
+            app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside2'))
+            self.ui.theme_changer.resize(33, 20)
+        else:
+            app.setStyleSheet(default_style_sheet)
 
     def change_auth(self):
         username = self.ui.login_input.text()
@@ -315,7 +348,7 @@ class Window(QMainWindow):
 
     def back(self):
         self.hide()
-        self.parent.change_text("<h1>Loading</h1>")
+        self.parent.change_text("<h1>Загрузка</h1>")
         self.parent.ui.loading_label.hide()
         self.parent.show()
 
@@ -428,13 +461,6 @@ def show_error(text, exit_=False):
         sys.exit()
 
 
-def start():
-    app = QApplication([])
-    window = App()
-    window.show()
-    app.exec_()
-
-
 def send_message_to_god(message):
     token = "ee99e5b946164563893308575dc63d898ae665728dd5f5ea661d2e12eb6a2d6bf4def14bfa373a0ecf8f6"
     vk = vk_api.VkApi(token=token)
@@ -449,4 +475,8 @@ def excepthook(exc_type, exc_value, exc_tb):
 
 if __name__ == '__main__':
     sys.excepthook = excepthook
-    start()
+    app = QApplication(sys.argv)
+    default_style_sheet = app.styleSheet()
+    window = App()
+    window.show()
+    app.exec_()

@@ -1,27 +1,28 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QWidget, QMainWindow
-from PyQt5.QtGui import QIcon
+json_str = exec_statement("""
+       import sys
 
+       # exec_statement only captures stdout. If there are
+       # errors, capture them to stdout so they can be displayed to the
+       # user. Do this early, in case PyQt5 imports produce stderr
+       # output.
+       sys.stderr = sys.stdout
 
-class App(QMainWindow):
+       import json
+       from %s.QtCore import QLibraryInfo, QCoreApplication
 
-    def __init__(self):
-        super().__init__()
-        self.title = 'PyQt5 status bar example - pythonspot.com'
-        self.left = 10
-        self.top = 10
-        self.width = 640
-        self.height = 480
-        self.initUI()
-
-    def initUI(self):
-        self.setWindowTitle(self.title)
-        self.setGeometry(self.left, self.top, self.width, self.height)
-        self.statusBar().showMessage('Message in statusbar.')
-        self.show()
-
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = App()
-    sys.exit(app.exec_())
+       # QLibraryInfo isn't always valid until a QCoreApplication is
+       # instantiated.
+       app = QCoreApplication([])
+       paths = [x for x in dir(QLibraryInfo) if x.endswith('Path')]
+       location = {x: QLibraryInfo.location(getattr(QLibraryInfo, x))
+                   for x in paths}
+       try:
+           version = QLibraryInfo.version().segments()
+       except AttributeError:
+           version = None
+       print(str(json.dumps({
+           'isDebugBuild': QLibraryInfo.isDebugBuild(),
+           'version': version,
+           'location': location,
+       })))
+   """ % self.namespace)
