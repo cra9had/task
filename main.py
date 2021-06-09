@@ -212,6 +212,7 @@ class Window(QMainWindow):
 	stop_signal = 0
 	threads = 0
 	processes = []
+
 	def __init__(self, tree, parent):
 		super(Window, self).__init__(parent)
 		self.ui = TreeUi()
@@ -223,6 +224,7 @@ class Window(QMainWindow):
 		self.settings = Settings(self)
 		self.proc_checker = Thread(target=self.check_processes, daemon=True)
 		self.proc_checker.start()
+		Thread(target=self.create_tree).start()
 		self.icons = {
 			".css": QIcon(r"images/document-css.png"),
 			".html": QIcon(r"images/document-html.png"),
@@ -360,7 +362,6 @@ class Window(QMainWindow):
 		self.processes.append(process)
 		process.start()
 
-
 	def open_file(self, item=None):
 		if not item:
 			item = self.ui.treeWidget.currentItem()
@@ -381,6 +382,11 @@ class Window(QMainWindow):
 		self.stop_signal = 1
 		self.threads = len(self.processes)
 
+	def create_tree(self):
+		for file_name, info in self.tree.items():
+			path = info[0]
+			self.get_tree_hierarchy(path + "/" + file_name + "/")
+
 	def init_ui(self):
 		self.ui.back_btn.clicked.connect(self.back)
 		self.ui.setting_btn.clicked.connect(lambda: self.settings.show())
@@ -388,10 +394,6 @@ class Window(QMainWindow):
 		self.ui.treeWidget.itemDoubleClicked.connect(self.open_file)
 		self.ui.open_file_btn.clicked.connect(self.open_file)
 		self.ui.stop_btn.clicked.connect(self.stop_downloading)
-
-		for file_name, info in self.tree.items():
-			path = info[0]
-			self.get_tree_hierarchy(path + "/" + file_name + "/")
 
 
 class ParsingError(Exception):
