@@ -4,7 +4,7 @@ from PySide2 import QtCore, QtGui, QtWidgets
 class Ui_Url(object):
     def setupUi(self, Url):
         Url.setObjectName("Url")
-        Url.resize(524, 547)
+        Url.setFixedSize(524, 547)
         font = QtGui.QFont()
         font.setPointSize(9)
         Url.setFont(font)

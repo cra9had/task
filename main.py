@@ -210,6 +210,8 @@ class Settings(QMainWindow):
 
 class Window(QMainWindow):
 	stop_signal = 0
+	threads = 0
+	processes = []
 	def __init__(self, tree, parent):
 		super(Window, self).__init__(parent)
 		self.ui = TreeUi()
@@ -219,6 +221,8 @@ class Window(QMainWindow):
 		self.toggles = {}
 		self.downloaded_files = {}  # file_name: path to file
 		self.settings = Settings(self)
+		self.proc_checker = Thread(target=self.check_processes, daemon=True)
+		self.proc_checker.start()
 		self.icons = {
 			".css": QIcon(r"images/document-css.png"),
 			".html": QIcon(r"images/document-html.png"),
@@ -236,6 +240,13 @@ class Window(QMainWindow):
 		for root, dirs, files in os.walk(self.settings.save_path):
 			if name in files:
 				return os.path.join(root, name)
+
+	def check_processes(self):
+		while True:
+			for proc in self.processes:
+				if not proc.is_alive():
+					self.processes.remove(proc)
+			time.sleep(0.05)
 
 	def zero_status(self):
 		self.set_status("Waiting")
@@ -304,9 +315,13 @@ class Window(QMainWindow):
 				if file_item_text in self.downloaded_files:
 					continue
 				if self.stop_signal:
-					self.stop_signal = 0
+					self.threads -= 1
+					if self.threads == 0:
+						self.stop_signal = 0
 					self.zero_status()
 					item.setText(0, emoji.emojize(f"{dir_text}:x:", use_aliases=True))
+					file_item.setText(0, file_item_text)
+					return
 				file_item.setText(0, emoji.emojize(f"{file_item_text}:hourglass_flowing_sand:", use_aliases=True))
 				path = file_name + path.partition(file_name)[-1]
 				if not os.path.exists(self.settings.save_path + "/" + path):
@@ -338,15 +353,16 @@ class Window(QMainWindow):
 			self.settings.show()
 			return
 		if file_name in self.tree:
-			Thread(target=self.silent_download, args=(file_name, item,)).start()
+			process = Thread(target=self.silent_download, args=(file_name, item,))
 		else:
-			Thread(target=self.dirs_silent_download, args=(file_name, item,)).start()
+			process = Thread(target=self.dirs_silent_download, args=(file_name, item,))
+		self.processes.append(process)
+		process.start()
+
 
 	def open_file(self, item=None):
-		print(item)
 		if not item:
 			item = self.ui.treeWidget.currentItem()
-			print(item)
 		text = deEmojify(item.text(0))
 		if text in self.downloaded_files:
 			os.startfile(self.downloaded_files[text])
@@ -362,6 +378,7 @@ class Window(QMainWindow):
 
 	def stop_downloading(self):
 		self.stop_signal = 1
+		self.threads = len(self.processes)
 
 	def init_ui(self):
 		self.ui.back_btn.clicked.connect(self.back)

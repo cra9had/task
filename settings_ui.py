@@ -17,7 +17,7 @@ class Ui_Settings(object):
     def setupUi(self, Settings):
         if not Settings.objectName():
             Settings.setObjectName(u"Settings")
-        Settings.resize(471, 178)
+        Settings.setFixedSize(471, 178)
         self.centralwidget = QWidget(Settings)
         self.centralwidget.setObjectName(u"centralwidget")
         self.change_btn = QPushButton(self.centralwidget)
