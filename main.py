@@ -142,8 +142,8 @@ class App(QMainWindow):
 		self.start_threads()
 
 	def open_window(self):
-		self.window.show()
 		self.hide()
+		self.window.show()
 
 	def get_tree(self):
 		tree = self.thread.tree
@@ -319,7 +319,7 @@ class Window(QMainWindow):
 					if self.threads == 0:
 						self.stop_signal = 0
 					self.zero_status()
-					item.setText(0, emoji.emojize(f"{dir_text}:x:", use_aliases=True))
+					item.setText(0, emoji.emojize({dir_text}, use_aliases=True))
 					file_item.setText(0, file_item_text)
 					return
 				file_item.setText(0, emoji.emojize(f"{file_item_text}:hourglass_flowing_sand:", use_aliases=True))
@@ -330,6 +330,7 @@ class Window(QMainWindow):
 				content = get_file_content(self.tree[fn][1], self.settings.auth)
 				if content == "return":
 					item.setText(0, emoji.emojize(dir_text, use_aliases=True))
+					file_item.setText(0, file_item_text)
 					self.zero_status()
 					return
 				elif content == "pass":

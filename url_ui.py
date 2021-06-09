@@ -5,6 +5,7 @@ class Ui_Url(object):
     def setupUi(self, Url):
         Url.setObjectName("Url")
         Url.setFixedSize(524, 547)
+        Url.setWindowIcon(QtGui.QIcon("images/icon.ico"))
         font = QtGui.QFont()
         font.setPointSize(9)
         Url.setFont(font)

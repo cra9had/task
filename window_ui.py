@@ -19,6 +19,7 @@ class TreeUi(object):
             Tree.setObjectName(u"Tree")
         Tree.resize(750, 607)
         Tree.setMinimumSize(QSize(722, 592))
+        Tree.setWindowIcon(QIcon("images/icon.ico"))
         self.centralwidget = QWidget(Tree)
         self.centralwidget.setObjectName(u"centralwidget")
         self.horizontalLayout = QHBoxLayout(self.centralwidget)

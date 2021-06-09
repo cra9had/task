@@ -18,6 +18,7 @@ class Ui_Settings(object):
         if not Settings.objectName():
             Settings.setObjectName(u"Settings")
         Settings.setFixedSize(471, 178)
+        Settings.setWindowIcon(QIcon("images/icon.ico"))
         self.centralwidget = QWidget(Settings)
         self.centralwidget.setObjectName(u"centralwidget")
         self.change_btn = QPushButton(self.centralwidget)
