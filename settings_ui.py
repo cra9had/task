@@ -87,7 +87,7 @@ class Ui_Settings(object):
     # setupUi
 
     def retranslateUi(self, Settings):
-        Settings.setWindowTitle(QCoreApplication.translate("Settings", u"MainWindow", None))
+        Settings.setWindowTitle(QCoreApplication.translate("Settings", u"Settings", None))
         self.change_btn.setText(QCoreApplication.translate("Settings", u"\u041f\u043e\u043c\u0435\u043d\u044f\u0442\u044c", None))
         self.label_3.setText(QCoreApplication.translate("Settings", u"\u041f\u0430\u0440\u043e\u043b\u044c", None))
         self.label_2.setText(QCoreApplication.translate("Settings", u"\u041b\u043e\u0433\u0438\u043d", None))

@@ -7,6 +7,7 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
+import sys
 
 from PySide2.QtCore import *
 from PySide2.QtGui import *
@@ -19,7 +20,8 @@ class TreeUi(object):
             Tree.setObjectName(u"Tree")
         Tree.resize(750, 607)
         Tree.setMinimumSize(QSize(722, 592))
-        Tree.setWindowIcon(QIcon("images/icon.ico"))
+        self.icon = QIcon("images/icon.ico")
+        Tree.setWindowIcon(self.icon)
         self.centralwidget = QWidget(Tree)
         self.centralwidget.setObjectName(u"centralwidget")
         self.horizontalLayout = QHBoxLayout(self.centralwidget)
@@ -160,6 +162,26 @@ class TreeUi(object):
 "	background-color: rgb(27,102,201);\n"
 "}")
 
+        self.tray_icon = QSystemTrayIcon(Tree)
+        self.tray_icon.setIcon(self.icon)
+        show_action = QAction("Показать", Tree)
+        quit_action = QAction("Закрыть", Tree)
+        hide_action = QAction("Спрятать", Tree)
+        show_action.triggered.connect(Tree.show_window)
+        hide_action.triggered.connect(Tree.hide)
+        quit_action.triggered.connect(sys.exit)
+        tray_menu = QMenu()
+        tray_menu.addAction(show_action)
+        tray_menu.addAction(hide_action)
+        tray_menu.addAction(quit_action)
+        self.tray_icon.showMessage(
+            "DOWNLOADER",
+            "Иконка в треи",
+            QSystemTrayIcon.Information,
+            2000
+        )
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.show()
         self.gridLayout_2.addWidget(self.stop_btn, 4, 0, 1, 3)
 
 
@@ -171,9 +193,8 @@ class TreeUi(object):
 
         QMetaObject.connectSlotsByName(Tree)
     # setupUi
-
     def retranslateUi(self, Tree):
-        Tree.setWindowTitle(QCoreApplication.translate("Tree", u"MainWindow", None))
+        Tree.setWindowTitle(QCoreApplication.translate("Tree", u"DOWNLOADER", None))
         self.open_file_btn.setText(QCoreApplication.translate("Tree", u"\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0424\u0430\u0439\u043b", None))
         self.download_btn.setText(QCoreApplication.translate("Tree", u"\u0421\u043a\u0430\u0447\u0430\u0442\u044c", None))
         self.setting_btn.setText(QCoreApplication.translate("Tree", u"\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438", None))
