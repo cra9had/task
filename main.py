@@ -186,6 +186,7 @@ class Settings(QMainWindow):
             self.ui.path_lable.setText(self.save_path)
         if self.settings.contains("auth"):
             self.auth = list(self.settings.value("auth"))
+            print(self.auth[1])
             self.auth[1] = ""
             self.auth = tuple(self.auth)
             self.ui.login_input.setText(self.auth[0])
@@ -278,8 +279,6 @@ class Window(QMainWindow):
                 toggle = QTreeWidgetItem()
                 file_path = self.is_file_exist(element)
                 if file_path:
-                    file_path = file_path.replace("\\", "/")
-                    file_path = file_path.replace(self.settings.save_path, "")[1:]
                     toggle.setText(0, emoji.emojize(f"{element}:white_check_mark:", use_aliases=True))
                     self.downloaded_files.update({element: file_path})
                 else:
@@ -385,7 +384,7 @@ class Window(QMainWindow):
             os.startfile(self.downloaded_files[text])
         else:
             if text in self.tree:
-                show_error("You need to download file before opening")
+                show_error("Нужно скачать файл перед его открытием")
 
     def back(self):
         self.hide()
@@ -478,7 +477,7 @@ def get_file_content(url, auth):
 
 
 def deEmojify(data):
-    emoj = "[⏳|✅]"
+    emoj = "[⏳|✅|❌]"
     return re.sub(emoj, '', data)
 
 

@@ -164,6 +164,7 @@ class TreeUi(object):
 
         self.tray_icon = QSystemTrayIcon(Tree)
         self.tray_icon.setIcon(self.icon)
+        self.tray_icon.activated.connect(Tree.show_window)
         show_action = QAction("Показать", Tree)
         quit_action = QAction("Закрыть", Tree)
         hide_action = QAction("Спрятать", Tree)
