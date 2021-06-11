@@ -16,7 +16,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>DOWNLOADER</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <widget class="QWidget" name="verticalLayoutWidget">
@@ -105,7 +105,7 @@ QPushButton:hover {
 }</string>
          </property>
          <property name="text">
-          <string>Удалить URL</string>
+          <string>Удалить каталог</string>
          </property>
         </widget>
        </item>
@@ -134,7 +134,7 @@ QPushButton:hover {
 }</string>
          </property>
          <property name="text">
-          <string>Добавить URL</string>
+          <string>Добавить катлог</string>
          </property>
         </widget>
        </item>
