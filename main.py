@@ -17,6 +17,7 @@ from os.path import expanduser
 from window_ui import TreeUi
 from settings_ui import Ui_Settings
 from url_ui import Ui_Url
+from url_ui import Ui_Url
 from threading import Thread
 from bs4 import BeautifulSoup
 
@@ -155,8 +156,10 @@ class Settings(QMainWindow):
         super(Settings, self).__init__(parent)
         self.ui = Ui_Settings()
         self.ui.setupUi(self)
+        self.parent = parent
         self.save_path = None
         self.auth = ("", "")
+        self.downloaded_files = {}
         self.settings = QSettings("DOWNLOADER", "cra9had", self)
         self.load_settings()
         self.init_ui()
@@ -186,13 +189,17 @@ class Settings(QMainWindow):
             self.ui.path_lable.setText(self.save_path)
         if self.settings.contains("auth"):
             self.auth = list(self.settings.value("auth"))
+            print(self.auth[1])
             self.auth[1] = ""
             self.auth = tuple(self.auth)
             self.ui.login_input.setText(self.auth[0])
+        if self.settings.contains("downloaded_files"):
+            self.downloaded_files = self.settings.value("downloaded_files")
 
     def save_settings(self):
         self.settings.setValue("save_path", self.save_path)
         self.settings.setValue("auth", self.auth)
+        self.settings.setValue("downloaded_files", self.parent.downloaded_files)
 
     def remake_path(self):
         self.save_path = self.ui.path_lable.text()
@@ -208,6 +215,17 @@ class Settings(QMainWindow):
             self.save_path = save_path
             self.ui.path_lable.setText(self.save_path)
             self.save_settings()
+
+
+class Searcher(QMainWindow):
+    def __init__(self, parent=None):
+        super(Searcher, self).__init__(parent)
+        self.ui = Ui_Url()
+        self.ui.setupUi(self)
+        self.init_ui()
+
+    def init_ui():
+        
 
 
 class Window(QMainWindow):
@@ -227,7 +245,6 @@ class Window(QMainWindow):
         self.settings = Settings(self)
         self.proc_checker = Thread(target=self.check_processes, daemon=True)
         self.proc_checker.start()
-        Thread(target=self.create_tree).start()
         self.icons = {
             ".css": QIcon(r"images/document-css.png"),
             ".html": QIcon(r"images/document-html.png"),
@@ -239,6 +256,7 @@ class Window(QMainWindow):
             ".zip": QIcon(r"images/document-jpg.png"),
             ".": QIcon(r"images/document.png"),
         }
+        Thread(target=self.create_tree).start()
         self.init_ui()
 
     def is_file_exist(self, name):
@@ -277,10 +295,9 @@ class Window(QMainWindow):
             if sel == "/":
                 element = path[last_slice:i]
                 toggle = QTreeWidgetItem()
-                file_path = self.is_file_exist(element)
-                if file_path:
+                if element in self.settings.downloaded_files:
                     toggle.setText(0, emoji.emojize(f"{element}:white_check_mark:", use_aliases=True))
-                    self.downloaded_files.update({element: file_path})
+                    self.downloaded_files.update({element: self.settings.downloaded_files[element]})
                 else:
                     toggle.setText(0, element)
                 icon = QIcon("images/folder-horizontal.png")
@@ -320,6 +337,7 @@ class Window(QMainWindow):
 
         item.setText(0, emoji.emojize(f"{text}:white_check_mark:", use_aliases=True))
         self.downloaded_files.update({file_name: path_to_file})
+        self.settings.save_settings()
         if self.is_tree_loaded:
             self.zero_status()
 
@@ -362,6 +380,7 @@ class Window(QMainWindow):
                     f.write(content)
                 file_item.setText(0, emoji.emojize(f"{file_item_text}:white_check_mark:", use_aliases=True))
                 self.downloaded_files.update({fn: path_to_file})
+                self.settings.save_settings()
         item.setText(0, emoji.emojize(f"{dir_text}:white_check_mark:", use_aliases=True))
         self.zero_status()
 

@@ -17,7 +17,7 @@ class Ui_Url(object):
     def setupUi(self, Url):
         if not Url.objectName():
             Url.setObjectName(u"Url")
-        Url.resize(524, 547)
+        Url.setFixedSize(524, 547)
         font = QFont()
         font.setPointSize(9)
         Url.setFont(font)
