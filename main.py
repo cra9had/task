@@ -186,7 +186,6 @@ class Settings(QMainWindow):
             self.ui.path_lable.setText(self.save_path)
         if self.settings.contains("auth"):
             self.auth = list(self.settings.value("auth"))
-            print(self.auth[1])
             self.auth[1] = ""
             self.auth = tuple(self.auth)
             self.ui.login_input.setText(self.auth[0])
@@ -215,6 +214,7 @@ class Window(QMainWindow):
     stop_signal = 0
     threads = 0
     processes = []
+    is_tree_loaded = False
 
     def __init__(self, tree, parent):
         super(Window, self).__init__(parent)
@@ -268,7 +268,7 @@ class Window(QMainWindow):
         self.activateWindow()
 
     def set_status(self, text):
-        self.ui.status_label.setText(f"Status: {text}")
+        self.ui.status_label.setText(f"Статус: {text}")
 
     def get_tree_hierarchy(self, path):
         last_slice = 0
@@ -302,12 +302,14 @@ class Window(QMainWindow):
         if file_name in self.downloaded_files:
             return
         text = deEmojify(item.text(0))
-        self.set_status(f"Downloading {text}")
+        if self.is_tree_loaded:
+            self.set_status(f"Скачивается {text}")
         item.setText(0, emoji.emojize(f"{text}:hourglass_flowing_sand:", use_aliases=True))
         content = get_file_content(self.tree[file_name][1], self.settings.auth)
         if content == "return":
             item.setText(0, text)
-            self.zero_status()
+            if self.is_tree_loaded:
+                self.zero_status()
             return
         path_to_file = self.settings.save_path + "/" + file_name
         if not content or content == "pass":
@@ -318,7 +320,8 @@ class Window(QMainWindow):
 
         item.setText(0, emoji.emojize(f"{text}:white_check_mark:", use_aliases=True))
         self.downloaded_files.update({file_name: path_to_file})
-        self.zero_status()
+        if self.is_tree_loaded:
+            self.zero_status()
 
     def dirs_silent_download(self, file_name, item):
         dir_text = deEmojify(item.text(0))
@@ -342,7 +345,7 @@ class Window(QMainWindow):
                 path = file_name + path.partition(file_name)[-1]
                 if not os.path.exists(self.settings.save_path + "/" + path):
                     os.makedirs(self.settings.save_path + "/" + path)
-                self.set_status(f"Downloading {dir_text}/{file_item_text}")
+                self.set_status(f"Скачивается {dir_text}/{file_item_text}")
                 content = get_file_content(self.tree[fn][1], self.settings.auth)
                 if content == "return":
                     item.setText(0, emoji.emojize(dir_text, use_aliases=True))
@@ -366,12 +369,15 @@ class Window(QMainWindow):
         item = self.ui.treeWidget.currentItem()
         file_name = deEmojify(item.text(0))
         if not self.settings.save_path:
-            show_error("choose save_path")
+            show_error("Выберете путь сохранения")
             self.settings.show()
             return
         if file_name in self.tree:
              Thread(target=self.silent_download, args=(file_name, item,)).start()
         else:
+            if not self.is_tree_loaded:
+                show_error("дождитесь завершения загрузки дерева файлов")
+                return
             process = Thread(target=self.dirs_silent_download, args=(file_name, item,))
             self.processes.append(process)
             process.start()
@@ -397,9 +403,12 @@ class Window(QMainWindow):
         self.threads = len(self.processes)
 
     def create_tree(self):
+        self.set_status("загрузка дерева файлов")
         for file_name, info in self.tree.items():
             path = info[0]
             self.get_tree_hierarchy(path + "/" + file_name + "/")
+        self.is_tree_loaded = True
+        self.zero_status()
 
     def init_ui(self):
         self.ui.back_btn.clicked.connect(self.back)
