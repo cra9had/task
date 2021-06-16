@@ -18,6 +18,7 @@ class Ui_Search(object):
         if not Search.objectName():
             Search.setObjectName(u"Search")
         Search.setFixedSize(363, 111)
+        Search.setWindowIcon(QIcon("images/icon.ico"))
         self.centralwidget = QWidget(Search)
         self.centralwidget.setObjectName(u"centralwidget")
         self.gridLayoutWidget = QWidget(self.centralwidget)

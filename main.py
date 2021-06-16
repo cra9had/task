@@ -17,7 +17,7 @@ from os.path import expanduser
 from window_ui import TreeUi
 from settings_ui import Ui_Settings
 from url_ui import Ui_Url
-from url_ui import Ui_Url
+from search_ui import Ui_Search
 from threading import Thread
 from bs4 import BeautifulSoup
 
@@ -171,7 +171,8 @@ class Settings(QMainWindow):
         self.ui.pw_input.textChanged.connect(self.change_auth)
         self.ui.theme_changer.stateChanged.connect(self.change_theme)
 
-    def change_theme(self, checked):
+    @staticmethod
+    def change_theme(checked):
         if checked:
             app.setStyleSheet(qdarkstyle.load_stylesheet(qt_api='pyside2'))
         else:
@@ -220,12 +221,39 @@ class Settings(QMainWindow):
 class Searcher(QMainWindow):
     def __init__(self, parent=None):
         super(Searcher, self).__init__(parent)
-        self.ui = Ui_Url()
+        self.parent = parent
+        self.items = []
+        self.current_index = 0
+        self.last_text = ""
+        self.ui = Ui_Search()
         self.ui.setupUi(self)
+
         self.init_ui()
 
-    def init_ui():
-        
+    def find_item(self):
+        text = self.ui.item_input.text()
+        if not self.items:
+            self.current_index = 0
+            for filename, item in self.parent.toggles.items():
+                if text in filename:
+                    self.items.append(item)
+            if not self.items:
+                show_error("Не найдено")
+                return
+
+        if self.current_index == len(self.items):
+            self.current_index = 0
+
+        self.parent.ui.treeWidget.scrollToItem(self.items[self.current_index])
+        self.parent.ui.treeWidget.setCurrentItem(self.items[self.current_index], 0)
+        self.current_index += 1
+
+    def text_changed(self):
+        self.items = []
+
+    def init_ui(self):
+        self.ui.search_btn.clicked.connect(self.find_item)
+        self.ui.item_input.textChanged.connect(self.text_changed)
 
 
 class Window(QMainWindow):
@@ -245,6 +273,8 @@ class Window(QMainWindow):
         self.settings = Settings(self)
         self.proc_checker = Thread(target=self.check_processes, daemon=True)
         self.proc_checker.start()
+        self.shortcut = QShortcut(QKeySequence("Ctrl+F"), self)
+        self.shortcut.activated.connect(self.show_search)
         self.icons = {
             ".css": QIcon(r"images/document-css.png"),
             ".html": QIcon(r"images/document-html.png"),
@@ -259,10 +289,9 @@ class Window(QMainWindow):
         Thread(target=self.create_tree).start()
         self.init_ui()
 
-    def is_file_exist(self, name):
-        for root, dirs, files in os.walk(self.settings.save_path):
-            if name in files:
-                return os.path.join(root, name)
+    def show_search(self):
+        searcher = Searcher(self)
+        searcher.show()
 
     def check_processes(self):
         while True:
@@ -322,24 +351,39 @@ class Window(QMainWindow):
         if self.is_tree_loaded:
             self.set_status(f"Скачивается {text}")
         item.setText(0, emoji.emojize(f"{text}:hourglass_flowing_sand:", use_aliases=True))
-        content = get_file_content(self.tree[file_name][1], self.settings.auth)
-        if content == "return":
+        response = get_file_content(self.tree[file_name][1], self.settings.auth)
+        if response == "return":
             item.setText(0, text)
             if self.is_tree_loaded:
                 self.zero_status()
             return
-        path_to_file = self.settings.save_path + "/" + file_name
-        if not content or content == "pass":
+        if not response or response == "pass":
             item.setText(0, emoji.emojize(f"{text}:x:", use_aliases=True))
             return
+        total = response.headers.get('content-length')
+        if total is None:
+            if self.is_tree_loaded:
+                self.zero_status()
+            return
+        path_to_file = self.settings.save_path + "/" + file_name
         with open(path_to_file, "wb") as f:
-            f.write(content)
+            downloaded = 0
+            total = int(total)
+            for data in response.iter_content(chunk_size=1024):
+                downloaded += len(data)
+                f.write(data)
+                done = int(100 / (total / downloaded))
+                self.progress_bar_set_value(done)
+        self.progress_bar_set_value(0)
 
         item.setText(0, emoji.emojize(f"{text}:white_check_mark:", use_aliases=True))
         self.downloaded_files.update({file_name: path_to_file})
         self.settings.save_settings()
         if self.is_tree_loaded:
             self.zero_status()
+
+    def progress_bar_set_value(self, value):
+        self.ui.progressBar.setValue(value)
 
     def dirs_silent_download(self, file_name, item):
         dir_text = deEmojify(item.text(0))
@@ -392,7 +436,7 @@ class Window(QMainWindow):
             self.settings.show()
             return
         if file_name in self.tree:
-             Thread(target=self.silent_download, args=(file_name, item,)).start()
+            Thread(target=self.silent_download, args=(file_name, item,)).start()
         else:
             if not self.is_tree_loaded:
                 show_error("дождитесь завершения загрузки дерева файлов")
@@ -436,6 +480,7 @@ class Window(QMainWindow):
         self.ui.treeWidget.itemDoubleClicked.connect(self.open_file)
         self.ui.open_file_btn.clicked.connect(self.open_file)
         self.ui.stop_btn.clicked.connect(self.stop_downloading)
+        self.ui.search_btn.clicked.connect(self.show_search)
 
 
 class ParsingError(Exception):
@@ -488,13 +533,10 @@ class Parser:
 
 
 def get_file_content(url, auth):
-    response = requests.get(url, auth=auth)
+    response = requests.get(url, auth=auth, stream=True)
 
     if response.status_code == 200:
-        if type(response.content) == bytes:
-            return response.content
-        else:
-            return "pass"
+        return response
     elif response.status_code == 401:
         show_error("неверный логин или пароль")
         return "return"

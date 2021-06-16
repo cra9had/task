@@ -1,13 +1,3 @@
-# -*- coding: utf-8 -*-
-
-################################################################################
-## Form generated from reading UI file 'url_ui.ui'
-##
-## Created by: Qt User Interface Compiler version 5.15.2
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
-
 from PySide2.QtCore import *
 from PySide2.QtGui import *
 from PySide2.QtWidgets import *
@@ -21,6 +11,7 @@ class Ui_Url(object):
         font = QFont()
         font.setPointSize(9)
         Url.setFont(font)
+        Url.setWindowIcon(QIcon("images/icon.ico"))
         self.centralwidget = QWidget(Url)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayoutWidget = QWidget(self.centralwidget)
