@@ -436,6 +436,10 @@ class Window(QMainWindow):
         self.raise_()
         self.activateWindow()
 
+    def is_children_download(self, parent_item):
+        children = parent_item.parent()
+        print(children)
+
     def set_status(self, text):
         self.ui.status_label.setText(f"Статус: {text}")
 
@@ -539,6 +543,7 @@ class Window(QMainWindow):
     def open_file(self, item=None):
         if not item:
             item = self.ui.treeWidget.currentItem()
+        self.is_children_download(item)
         text = deEmojify(item.text(0))
         if text in self.downloaded_files:
             os.startfile(self.downloaded_files[text])
