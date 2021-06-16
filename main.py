@@ -256,6 +256,128 @@ class Searcher(QMainWindow):
         self.ui.item_input.textChanged.connect(self.text_changed)
 
 
+class Download_file(QThread):
+    progress_percent = Signal(int)
+
+    def __init__(self, parent, file_name, item):
+        super(Download_file, self).__init__()
+        self.parent = parent
+        self.file_name = file_name
+        self.item = item
+
+    def run(self):
+        if self.file_name in self.parent.downloaded_files:
+            return
+        text = deEmojify(self.item.text(0))
+        if self.parent.is_tree_loaded:
+            self.parent.set_status(f"Скачивается {text}")
+        self.item.setText(0, emoji.emojize(f"{text}:hourglass_flowing_sand:", use_aliases=True))
+        response = get_file_content(self.parent.tree[self.file_name][1], self.parent.settings.auth)
+        if response == "return":
+            self.item.setText(0, text)
+            if self.parent.is_tree_loaded:
+                self.parent.zero_status()
+            return
+        if not response or response == "pass":
+            self.item.setText(0, emoji.emojize(f"{text}:x:", use_aliases=True))
+            return
+        total = response.headers.get('content-length')
+        if total is None:
+            if self.parent.is_tree_loaded:
+                self.parent.zero_status()
+            return
+        path_to_file = self.parent.settings.save_path + "/" + self.file_name
+        with open(path_to_file, "wb") as f:
+            downloaded = 0
+            total = int(total)
+
+            for data in response.iter_content(chunk_size=2048):
+                if data:
+                    downloaded += len(data)
+                    f.write(data)
+                    f.flush()
+                    done = int(100 / (total / downloaded))
+                    self.progress_percent.emit(done)
+        self.progress_percent.emit(0)
+
+        self.item.setText(0, emoji.emojize(f"{text}:white_check_mark:", use_aliases=True))
+        self.parent.downloaded_files.update({self.file_name: path_to_file})
+        self.parent.settings.save_settings()
+        if self.parent.is_tree_loaded:
+            self.parent.zero_status()
+
+
+class Download_dirs(QThread):
+    finish = Signal()
+    progress_percent = Signal(int)
+
+    def __init__(self, parent, file_name, item):
+        super(Download_dirs, self).__init__()
+        self.parent = parent
+        self.file_name = file_name
+        self.item = item
+
+    def run(self):
+        dir_text = deEmojify(self.item.text(0))
+        self.item.setText(0, emoji.emojize(f"{dir_text}:hourglass_flowing_sand:", use_aliases=True))
+        for fn, info in self.parent.tree.items():
+            path = info[0]
+            if self.file_name in path and self.file_name not in self.parent.downloaded_files:
+                file_item = self.parent.toggles[fn]
+                file_item_text = deEmojify(file_item.text(0))
+                if file_item_text in self.parent.downloaded_files or file_item_text != file_item.text(0):
+                    continue
+                if self.parent.stop_signal:
+                    self.parent.threads -= 1
+                    if self.parent.threads == 0:
+                        self.parent.stop_signal = 0
+                    self.parent.zero_status()
+                    self.item.setText(0, dir_text)
+                    file_item.setText(0, file_item_text)
+                    return
+                file_item.setText(0, emoji.emojize(f"{file_item_text}:hourglass_flowing_sand:", use_aliases=True))
+                path = self.file_name + path.partition(self.file_name)[-1]
+                if not os.path.exists(self.parent.settings.save_path + "/" + path):
+                    os.makedirs(self.parent.settings.save_path + "/" + path)
+                self.parent.set_status(f"Скачивается {dir_text}/{file_item_text}")
+                response = get_file_content(self.parent.tree[fn][1], self.parent.settings.auth)
+                if response == "return":
+                    self.item.setText(0, emoji.emojize(dir_text, use_aliases=True))
+                    file_item.setText(0, file_item_text)
+                    self.parent.zero_status()
+                    return
+                elif response == "pass":
+                    file_item.setText(0, emoji.emojize(f"{file_item_text}:x:", use_aliases=True))
+                    continue
+                if not response:
+                    return
+                path_to_file = self.parent.settings.save_path + "/" + path + "/" + fn
+                total = response.headers.get('content-length')
+                if total is None:
+                    if self.parent.is_tree_loaded:
+                        self.parent.zero_status()
+                    return
+
+                with open(path_to_file, "wb") as f:
+                    downloaded = 0
+                    total = int(total)
+                    for data in response.iter_content(chunk_size=1024):
+                        if data:
+                            downloaded += len(data)
+                            f.write(data)
+                            f.flush()
+                            done = int(100 / (total / downloaded))
+                            self.progress_percent.emit(done)
+
+                self.progress_percent.emit(0)
+                file_item.setText(0, emoji.emojize(f"{file_item_text}:white_check_mark:", use_aliases=True))
+                self.parent.downloaded_files.update({fn: path_to_file})
+                self.parent.settings.save_settings()
+        self.item.setText(0, emoji.emojize(f"{dir_text}:white_check_mark:", use_aliases=True))
+        self.parent.zero_status()
+        self.finish.emit()
+
+
 class Window(QMainWindow):
     stop_signal = 0
     threads = 0
@@ -369,11 +491,14 @@ class Window(QMainWindow):
         with open(path_to_file, "wb") as f:
             downloaded = 0
             total = int(total)
-            for data in response.iter_content(chunk_size=1024):
-                downloaded += len(data)
-                f.write(data)
-                done = int(100 / (total / downloaded))
-                self.progress_bar_set_value(done)
+
+            for data in response.iter_content(chunk_size=2048):
+                if data:
+                    downloaded += len(data)
+                    f.write(data)
+                    f.flush()
+                    done = int(100 / (total / downloaded))
+                    self.progress_bar_set_value(done)
         self.progress_bar_set_value(0)
 
         item.setText(0, emoji.emojize(f"{text}:white_check_mark:", use_aliases=True))
@@ -383,50 +508,9 @@ class Window(QMainWindow):
             self.zero_status()
 
     def progress_bar_set_value(self, value):
-        self.ui.progressBar.setValue(value)
-
-    def dirs_silent_download(self, file_name, item):
-        dir_text = deEmojify(item.text(0))
-        item.setText(0, emoji.emojize(f"{dir_text}:hourglass_flowing_sand:", use_aliases=True))
-        for fn, info in self.tree.items():
-            path = info[0]
-            if file_name in path and file_name not in self.downloaded_files:
-                file_item = self.toggles[fn]
-                file_item_text = deEmojify(file_item.text(0))
-                if file_item_text in self.downloaded_files or file_item_text != file_item.text(0):
-                    continue
-                if self.stop_signal:
-                    self.threads -= 1
-                    if self.threads == 0:
-                        self.stop_signal = 0
-                    self.zero_status()
-                    item.setText(0, dir_text)
-                    file_item.setText(0, file_item_text)
-                    return
-                file_item.setText(0, emoji.emojize(f"{file_item_text}:hourglass_flowing_sand:", use_aliases=True))
-                path = file_name + path.partition(file_name)[-1]
-                if not os.path.exists(self.settings.save_path + "/" + path):
-                    os.makedirs(self.settings.save_path + "/" + path)
-                self.set_status(f"Скачивается {dir_text}/{file_item_text}")
-                content = get_file_content(self.tree[fn][1], self.settings.auth)
-                if content == "return":
-                    item.setText(0, emoji.emojize(dir_text, use_aliases=True))
-                    file_item.setText(0, file_item_text)
-                    self.zero_status()
-                    return
-                elif content == "pass":
-                    file_item.setText(0, emoji.emojize(f"{file_item_text}:x:", use_aliases=True))
-                    continue
-                if not content:
-                    return
-                path_to_file = self.settings.save_path + "/" + path + "/" + fn
-                with open(path_to_file, "wb") as f:
-                    f.write(content)
-                file_item.setText(0, emoji.emojize(f"{file_item_text}:white_check_mark:", use_aliases=True))
-                self.downloaded_files.update({fn: path_to_file})
-                self.settings.save_settings()
-        item.setText(0, emoji.emojize(f"{dir_text}:white_check_mark:", use_aliases=True))
-        self.zero_status()
+        if self.ui.progressBar.value() != value:
+            self.ui.progressBar.setValue(value)
+            QApplication.processEvents()
 
     def download_file(self):
         item = self.ui.treeWidget.currentItem()
@@ -436,14 +520,21 @@ class Window(QMainWindow):
             self.settings.show()
             return
         if file_name in self.tree:
-            Thread(target=self.silent_download, args=(file_name, item,)).start()
+            self.process = Download_file(self, file_name, item)
+            self.process.progress_percent.connect(self.progress_bar_set_value)
+            self.process.start()
         else:
             if not self.is_tree_loaded:
                 show_error("дождитесь завершения загрузки дерева файлов")
                 return
-            process = Thread(target=self.dirs_silent_download, args=(file_name, item,))
-            self.processes.append(process)
-            process.start()
+            self.process = Download_dirs(self, file_name, item)
+            self.process.progress_percent.connect(self.progress_bar_set_value)
+            self.process.finish.connect(self.thread_finished)
+            self.process.start()
+            self.threads += 1
+
+    def thread_finished(self):
+        self.threads -= 1
 
     def open_file(self, item=None):
         if not item:
@@ -462,8 +553,8 @@ class Window(QMainWindow):
         self.parent.show()
 
     def stop_downloading(self):
-        self.stop_signal = 1
-        self.threads = len(self.processes)
+        if self.threads:
+            self.stop_signal = 1
 
     def create_tree(self):
         self.set_status("загрузка дерева файлов")
