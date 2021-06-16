@@ -256,11 +256,11 @@ class Searcher(QMainWindow):
         self.ui.item_input.textChanged.connect(self.text_changed)
 
 
-class Download_file(QThread):
+class DownloadFile(QThread):
     progress_percent = Signal(int)
 
     def __init__(self, parent, file_name, item):
-        super(Download_file, self).__init__()
+        super(DownloadFile, self).__init__()
         self.parent = parent
         self.file_name = file_name
         self.item = item
@@ -307,12 +307,12 @@ class Download_file(QThread):
             self.parent.zero_status()
 
 
-class Download_dirs(QThread):
+class DownloadDirs(QThread):
     finish = Signal()
     progress_percent = Signal(int)
 
     def __init__(self, parent, file_name, item):
-        super(Download_dirs, self).__init__()
+        super(DownloadDirs, self).__init__()
         self.parent = parent
         self.file_name = file_name
         self.item = item
@@ -415,6 +415,18 @@ class Window(QMainWindow):
         searcher = Searcher(self)
         searcher.show()
 
+    def is_toggle_downloaded(self, parent_item) -> bool:
+        for i in range(parent_item.childCount()):
+            child = parent_item.child(i)
+            text = deEmojify(child.text(0))
+            if text not in self.tree:
+                if not self.is_toggle_downloaded(child):
+                    return False
+            else:
+                if text not in self.settings.downloaded_files:
+                    return False
+        return True
+
     def check_processes(self):
         while True:
             for proc in self.processes:
@@ -435,10 +447,6 @@ class Window(QMainWindow):
 
         self.raise_()
         self.activateWindow()
-
-    def is_children_download(self, parent_item):
-        children = parent_item.parent()
-        print(children)
 
     def set_status(self, text):
         self.ui.status_label.setText(f"Статус: {text}")
@@ -469,6 +477,12 @@ class Window(QMainWindow):
                     parent = self.toggles[element]
 
                 last_slice = i + 1  # i + "/"
+
+    def check_toggles(self):
+        for toggle, item in self.toggles.items():
+            if toggle not in self.tree:
+                if self.is_toggle_downloaded(item):
+                    item.setText(0, toggle + emoji.emojize(":white_check_mark:", use_aliases=True))
 
     def silent_download(self, file_name, item):
         if file_name in self.downloaded_files:
@@ -524,14 +538,15 @@ class Window(QMainWindow):
             self.settings.show()
             return
         if file_name in self.tree:
-            self.process = Download_file(self, file_name, item)
+            self.process = DownloadFile(self, file_name, item)
             self.process.progress_percent.connect(self.progress_bar_set_value)
             self.process.start()
         else:
             if not self.is_tree_loaded:
                 show_error("дождитесь завершения загрузки дерева файлов")
                 return
-            self.process = Download_dirs(self, file_name, item)
+
+            self.process = DownloadDirs(self, file_name, item)
             self.process.progress_percent.connect(self.progress_bar_set_value)
             self.process.finish.connect(self.thread_finished)
             self.process.start()
@@ -567,6 +582,9 @@ class Window(QMainWindow):
             path = info[0]
             self.get_tree_hierarchy(path + "/" + file_name + "/")
         self.is_tree_loaded = True
+        thread = Thread(target=self.check_toggles, daemon=True)
+        thread.start()
+        thread.join()
         self.zero_status()
 
     def init_ui(self):
